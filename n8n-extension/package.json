@@ -1,0 +1,118 @@
+{
+  "name": "n8n-workbench",
+  "displayName": "n8n Workbench",
+  "description": "Open and interact with n8n directly in an editor panel or tab with live server status.",
+  "version": "1.0.0",
+  "publisher": "local",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "n8n-sidebar-container",
+          "title": "n8n",
+          "icon": "resources/n8n-activitybar.svg"
+        }
+      ]
+    },
+    "views": {
+      "n8n-sidebar-container": [
+        {
+          "type": "webview",
+          "id": "n8n.sidebarView",
+          "name": "n8n Automation"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "n8n.openEditor",
+        "title": "Open n8n in Editor Tab",
+        "category": "n8n",
+        "icon": "$(zap)"
+      },
+      {
+        "command": "n8n.openBeside",
+        "title": "Open n8n Beside Active Editor",
+        "category": "n8n",
+        "icon": "$(split-horizontal)"
+      },
+      {
+        "command": "n8n.openBrowser",
+        "title": "Open n8n in External Browser",
+        "category": "n8n",
+        "icon": "$(link-external)"
+      },
+      {
+        "command": "n8n.openSimpleBrowser",
+        "title": "Open n8n in Simple Browser Tab",
+        "category": "n8n"
+      },
+      {
+        "command": "n8n.startServer",
+        "title": "Start Local n8n Server (npx n8n)",
+        "category": "n8n",
+        "icon": "$(play)"
+      },
+      {
+        "command": "n8n.checkStatus",
+        "title": "Check Server Status",
+        "category": "n8n",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "n8n.configureUrl",
+        "title": "Configure Server URL",
+        "category": "n8n",
+        "icon": "$(gear)"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "n8n.openEditor",
+          "group": "navigation",
+          "when": "resourceExtname == .json"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "n8n.openEditor",
+          "when": "view == n8n.sidebarView",
+          "group": "navigation"
+        },
+        {
+          "command": "n8n.checkStatus",
+          "when": "view == n8n.sidebarView",
+          "group": "navigation"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "n8n.openEditor",
+        "key": "ctrl+alt+n",
+        "mac": "cmd+alt+n"
+      }
+    ],
+    "configuration": {
+      "title": "n8n Workbench",
+      "properties": {
+        "n8n.url": {
+          "type": "string",
+          "default": "http://localhost:5678",
+          "description": "URL of your n8n instance (e.g. http://localhost:5678)"
+        }
+      }
+    }
+  }
+}

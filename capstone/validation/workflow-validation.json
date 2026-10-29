@@ -1,0 +1,98 @@
+{
+  "checked_at": "2026-10-28T08:56:27.304Z",
+  "workflows": [
+    {
+      "file": "01-crm-manager.json",
+      "id": "capstone01",
+      "nodes": 24,
+      "connections": 27,
+      "chat_models": 1,
+      "code_nodes": 5
+    },
+    {
+      "file": "02-lead-qualifier.json",
+      "id": "capstone02",
+      "nodes": 26,
+      "connections": 37,
+      "chat_models": 1,
+      "code_nodes": 10
+    },
+    {
+      "file": "03-prospecting.json",
+      "id": "capstone03",
+      "nodes": 20,
+      "connections": 22,
+      "chat_models": 1,
+      "code_nodes": 9
+    },
+    {
+      "file": "04-revops.json",
+      "id": "capstone04",
+      "nodes": 13,
+      "connections": 15,
+      "chat_models": 1,
+      "code_nodes": 5
+    },
+    {
+      "file": "05-sdr.json",
+      "id": "capstone05",
+      "nodes": 25,
+      "connections": 32,
+      "chat_models": 1,
+      "code_nodes": 12
+    },
+    {
+      "file": "06-product-expert-rag.json",
+      "id": "capstone06",
+      "nodes": 12,
+      "connections": 13,
+      "chat_models": 1,
+      "code_nodes": 4
+    },
+    {
+      "file": "07-demo-booker.json",
+      "id": "capstone07",
+      "nodes": 36,
+      "connections": 55,
+      "chat_models": 1,
+      "code_nodes": 16
+    },
+    {
+      "file": "08-mcp-lookup-contact.json",
+      "id": "capstone08",
+      "nodes": 10,
+      "connections": 9,
+      "chat_models": 0,
+      "code_nodes": 4
+    },
+    {
+      "file": "09-mcp-create-deal.json",
+      "id": "capstone09",
+      "nodes": 10,
+      "connections": 9,
+      "chat_models": 0,
+      "code_nodes": 4
+    },
+    {
+      "file": "10-stale-deal-followup.json",
+      "id": "capstone10",
+      "nodes": 28,
+      "connections": 36,
+      "chat_models": 1,
+      "code_nodes": 12
+    },
+    {
+      "file": "11-global-error-handler.json",
+      "id": "capstone11",
+      "nodes": 8,
+      "connections": 6,
+      "chat_models": 0,
+      "code_nodes": 3
+    }
+  ],
+  "errors": [],
+  "warnings": [],
+  "n8n_version": "2.44.6",
+  "result": "PASS",
+  "scope": "Offline syntax, graph, sub-workflow interfaces, Code/expression syntax, and installed n8n parameter schemas. Does not authenticate services or execute LLM calls."
+}

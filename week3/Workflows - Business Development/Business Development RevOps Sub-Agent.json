@@ -1,0 +1,263 @@
+{
+  "name": "RevOps Sub-Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-5.2",
+          "mode": "list",
+          "cachedResultName": "gpt-5.2"
+        },
+        "builtInTools": {},
+        "options": {
+          "reasoningEffort": "low"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        224,
+        224
+      ],
+      "id": "bbe1ccb5-64ab-450f-9d37-7aec196612cb",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "rEBsbMMEP7Sn4djf",
+          "name": "OpenAi account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"name\": \"The full name of the lead\",\n  \"company\": \"The company where they work\",\n  \"role\": \"Their job title\",\n  \"email\": \"Their email address\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        384,
+        224
+      ],
+      "id": "0122b3fa-ba92-46f5-a933-59a66a2dd9f4",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "resource": "organization",
+        "name": "={{ $json.output.company }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.pipedrive",
+      "typeVersion": 1,
+      "position": [
+        576,
+        0
+      ],
+      "id": "7a5f2f5d-bd56-4525-bf4a-5bfe221e7596",
+      "name": "Create an organization",
+      "credentials": {
+        "pipedriveApi": {
+          "id": "JuwrPGGjGJm3N8CX",
+          "name": "Pipedrive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "person",
+        "name": "={{ $('AI Agent').item.json.output.name }}",
+        "additionalFields": {
+          "email": [
+            "={{ $('AI Agent').item.json.output.email }}"
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.pipedrive",
+      "typeVersion": 1,
+      "position": [
+        800,
+        0
+      ],
+      "id": "c74723cf-f486-4984-905d-9c480fadef11",
+      "name": "Create a person",
+      "credentials": {
+        "pipedriveApi": {
+          "id": "JuwrPGGjGJm3N8CX",
+          "name": "Pipedrive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "lead",
+        "title": "={{ $('AI Agent').item.json.output.name }}",
+        "organization_id": "={{ $('Create an organization').item.json.id }}",
+        "additionalFields": {
+          "person_id": "={{ $json.id }}"
+        }
+      },
+      "type": "n8n-nodes-base.pipedrive",
+      "typeVersion": 1,
+      "position": [
+        1024,
+        0
+      ],
+      "id": "478b23df-3e2c-48d4-8cfe-d7287f61bc67",
+      "name": "Create a lead",
+      "credentials": {
+        "pipedriveApi": {
+          "id": "JuwrPGGjGJm3N8CX",
+          "name": "Pipedrive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.sales_lead_description }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "Based on the input from the user which describes a sales lead, you should reply with a structured version of the lead. Your reply will be sent to Pipedrive to create a lead record."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        224,
+        0
+      ],
+      "id": "aee65fdb-8680-401c-a4c8-27a605e4a896",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "content": "## Parse Data \nUse an Agent with Structured Outputs",
+        "height": 496,
+        "width": 336
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        176,
+        -80
+      ],
+      "typeVersion": 1,
+      "id": "142527ba-2370-4f4d-8ebc-ad2a625d3c32",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Load Data \nStore prospect data in Pipedrive",
+        "height": 496,
+        "width": 624
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        528,
+        -80
+      ],
+      "typeVersion": 1,
+      "id": "1630686a-01e7-4009-a080-86be92cf9deb",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "sales_lead_description"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "076acad3-3445-4a69-987d-baa1d1cb5fd5",
+      "name": "When Executed by Another Workflow"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create an organization": {
+      "main": [
+        [
+          {
+            "node": "Create a person",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a person": {
+      "main": [
+        [
+          {
+            "node": "Create a lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Create an organization",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "89b1ea14-33c5-4e47-82c7-3783582a1043",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "13b55200b963a086b42f884f9b46bd6ff8b68ee884b953ffb37c8c7f8b6ed06c"
+  },
+  "id": "fodelXd6e3IUp6l9",
+  "tags": []
+}

@@ -1,0 +1,398 @@
+{
+  "name": "Demo Booking Sub-Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Please book a demo with:\n{{ $json.body.name }}\nAt the following time:\n{{  $json.body.timeslot }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are provided with a person who would like to receive a demo of the AccountAI product and their preferred timeslot. You use your tool to check the calendar's availability, and then book the demo in the calendar. Reply with the result."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        352,
+        0
+      ],
+      "id": "b2da72f0-6e39-47ef-9e0a-90065cc8486c",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-5.2",
+          "mode": "list",
+          "cachedResultName": "gpt-5.2"
+        },
+        "builtInTools": {},
+        "options": {
+          "reasoningEffort": "low"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        224,
+        224
+      ],
+      "id": "989e76d2-e4c1-4235-92b6-f6eb690e8f52",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "rEBsbMMEP7Sn4djf",
+          "name": "OpenAi account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Get availability in a calendar in Google Calendar - whether the user is available to give a demo from the given start time to end time",
+        "resource": "calendar",
+        "calendar": {
+          "__rl": true,
+          "value": "",
+          "mode": "id"
+        },
+        "timeMin": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Start_Time', ``, 'string') }}",
+        "timeMax": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('End_Time', ``, 'string') }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        352,
+        224
+      ],
+      "id": "770b0eff-74eb-4731-8d54-009ad102a1fa",
+      "name": "Get availability in a calendar in Google Calendar",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "LVD90L8ypFmXKy3a",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Create an event in Google Calendar to represent a demo at a time that is available",
+        "calendar": {
+          "__rl": true,
+          "value": "",
+          "mode": "id"
+        },
+        "start": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Start', ``, 'string') }}",
+        "end": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('End', ``, 'string') }}",
+        "additionalFields": {
+          "description": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Description', ``, 'string') }}",
+          "location": "http://zoom.us/abcdef",
+          "summary": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Summary', ``, 'string') }}"
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        480,
+        224
+      ],
+      "id": "e66faf54-21d3-412c-bdc6-b2f182823037",
+      "name": "Create an event in Google Calendar",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "LVD90L8ypFmXKy3a",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n\t\"success\": true,\n    \"summary\": \"summarize the outcome here\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        608,
+        224
+      ],
+      "id": "c2164b0a-2951-47a5-bf19-4f2f6a923b22",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "0997229f-b62c-4004-85bb-601b18cc7c7c",
+              "leftValue": "={{ $json.output.success}}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        816,
+        0
+      ],
+      "id": "5e3b4413-e06a-4bd0-b562-9f3ff31922e0",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "message": "=Successfully scheduled demo!\n{{ $json.output.summary }}",
+        "priority": 1,
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.pushover",
+      "typeVersion": 1,
+      "position": [
+        1040,
+        -96
+      ],
+      "id": "b4bfacbd-94c1-4ce1-8366-90a42b70ef99",
+      "name": "Push a message",
+      "credentials": {
+        "pushoverApi": {
+          "id": "DV3K0hRkoAh05Svv",
+          "name": "Pushover account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "message": "=Not able to create a demo:\n{{ $json.output.summary }}",
+        "priority": 1,
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.pushover",
+      "typeVersion": 1,
+      "position": [
+        1040,
+        96
+      ],
+      "id": "1b7ff1f8-c9b1-436a-82f0-244f56ac13ea",
+      "name": "Push a message1",
+      "credentials": {
+        "pushoverApi": {
+          "id": "DV3K0hRkoAh05Svv",
+          "name": "Pushover account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Schedule",
+        "height": 560,
+        "width": 560
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        176,
+        -160
+      ],
+      "typeVersion": 1,
+      "id": "29fc6b69-5165-4917-a540-7822e99266fc",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Report",
+        "height": 560,
+        "width": 432
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        752,
+        -160
+      ],
+      "typeVersion": 1,
+      "id": "df113895-e575-484e-bc3e-15adefc958f2",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "22fd7cc5-ba6b-405b-a7f0-f2c94c4b9df1",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "cb559e94-ccb2-4c94-b7da-cf65e4e4a9c3",
+      "name": "Webhook",
+      "webhookId": "22fd7cc5-ba6b-405b-a7f0-f2c94c4b9df1"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $('AI Agent').item.json.output.summary }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1248,
+        -96
+      ],
+      "id": "6e9356ab-2ae6-4aa4-abe3-cba9980d492f",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $('AI Agent').item.json.output.summary }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1248,
+        96
+      ],
+      "id": "5a8b14bd-7cba-49d1-8a66-84ec43454454",
+      "name": "Respond to Webhook1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get availability in a calendar in Google Calendar": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create an event in Google Calendar": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Push a message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Push a message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Push a message": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Push a message1": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "9f9850b0-f287-4346-a358-14fd70469083",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "13b55200b963a086b42f884f9b46bd6ff8b68ee884b953ffb37c8c7f8b6ed06c"
+  },
+  "id": "m2eNXo3KsSD6RDP0",
+  "tags": []
+}

@@ -1,0 +1,321 @@
+{
+  "id": "capstone08",
+  "name": "08 - AccountAI Mcp Lookup Contact",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "accountai-lookup-contact",
+        "authentication": "bearerAuth"
+      },
+      "id": "682464a8-ea9f-5640-a9a2-ad8c458f1b01",
+      "name": "MCP Server Trigger",
+      "type": "@n8n/n8n-nodes-langchain.mcpTrigger",
+      "typeVersion": 2,
+      "position": [
+        0,
+        -260
+      ],
+      "webhookId": "63d64278-6bc9-5611-8ffe-73a2a466de08"
+    },
+    {
+      "parameters": {
+        "description": "Find contacts by exact normalized email or full name and include company and latest BANT qualification.",
+        "workflowId": {
+          "__rl": true,
+          "value": "capstone08",
+          "mode": "id"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "name": "={{ $fromAI('name', 'Exact full name, or empty when email is supplied', 'string', '') }}",
+            "email": "={{ $fromAI('email', 'Exact email, preferred over name; empty when name is supplied', 'string', '') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "name",
+              "displayName": "name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "id": "cf53072e-5070-5723-9f2a-c57673f3a75d",
+      "name": "lookup_contact",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        240,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "inputSource": "workflowInputs",
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "name",
+              "type": "string"
+            },
+            {
+              "name": "email",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "id": "2f507072-3b24-5ce6-a14d-30dab5d56e39",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const input=$input.first().json;\nconst name=String(input.name||'').trim().slice(0,200);\nconst email=String(input.email||'').trim().toLowerCase();\nif(!name&&!email) throw new Error('Provide name or email');\nif(email&&!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) throw new Error('Invalid email');\nreturn [{json:{name:name||null,email:email||null}}];"
+      },
+      "id": "098164d1-d7f9-5663-9da2-6285e8a0d4f8",
+      "name": "Validate Tool Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        140
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL + '/rest/v1/rpc/lookup_crm_contact' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {p_name:$json.name,p_email:$json.email} }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "764ec827-5563-5283-a946-b42cf71d114a",
+      "name": "Supabase lookup_contact",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        520,
+        140
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const data=$input.first().json; if(data.success!==true) throw new Error('Supabase returned no success result'); return [{json:data}];"
+      },
+      "id": "ef192ad0-177b-5567-852d-83edbd58d549",
+      "name": "Return Tool Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        140
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const raw = $input.first().json;\nconst err = raw.error;\nconst message = String(typeof err === 'string' ? err : err?.message || raw.message || 'Workflow operation failed').slice(0,1600);\nreturn [{json:{success:false,error:message,workflow:{id:$workflow.id,name:$workflow.name},execution:{id:$execution.id,error:{message},lastNodeExecuted:err?.node?.name || raw.node_name || 'See parent execution'}}}];"
+      },
+      "id": "fd744dd1-ba36-53bc-a6b7-56cbfebb6305",
+      "name": "Prepare Failure",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        300,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "value": "capstone11",
+          "mode": "id"
+        },
+        "mode": "each",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "59b7a77a-6210-5b10-8ae3-d60ec18195d6",
+      "name": "Log Failure",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        540,
+        420
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "return [{json:$('Prepare Failure').item.json}];"
+      },
+      "id": "078cf64a-7d17-5bf0-b4b8-d81918493113",
+      "name": "Return Failure",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        780,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## lookup_contact\nSelect a Bearer Auth credential on the MCP Server Trigger and a Supabase credential on the HTTP node. Publish this workflow. Connect Claude Desktop through mcp-remote to the production MCP URL shown by n8n.\n\nThe tool calls this same workflow through its Execute Workflow Trigger. Re-select this workflow in lookup_contact if import changed its ID; this starts the separate execution branch and does not recurse through MCP.",
+        "height": 260,
+        "width": 560
+      },
+      "id": "e238ea5e-136e-5dd3-ac8a-786261d3c4c8",
+      "name": "MCP Setup Notes",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -20,
+        -600
+      ]
+    }
+  ],
+  "connections": {
+    "lookup_contact": {
+      "ai_tool": [
+        [
+          {
+            "node": "MCP Server Trigger",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Validate Tool Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Tool Input": {
+      "main": [
+        [
+          {
+            "node": "Supabase lookup_contact",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase lookup_contact": {
+      "main": [
+        [
+          {
+            "node": "Return Tool Result",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Return Tool Result": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Prepare Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Failure": {
+      "main": [
+        [
+          {
+            "node": "Log Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Failure": {
+      "main": [
+        [
+          {
+            "node": "Return Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Africa/Cairo",
+    "errorWorkflow": "capstone11"
+  },
+  "pinData": {},
+  "versionId": "3966923a-0bbf-5a30-bcdc-4ae70ea114b8",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

@@ -1,0 +1,217 @@
+{
+  "id": "capstone11",
+  "name": "11 - AccountAI Global Error Handler",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "c5ac0bf2-8c79-5636-892b-535611074410",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "fd37abd9-3cd2-5b7d-9265-6cda287a1268",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const input=$input.first().json;\nconst execution=input.execution||{};\nconst err=execution.error||input.trigger?.error||input.error||{};\nlet message=String(typeof err==='string'?err:err.message||input.error_message||input.message||'Unknown error');\nmessage=message.replace(/(Bearer\\s+)[^\\s]+/gi,'$1[redacted]').replace(/((?:api[_-]?key|token|secret|authorization)\\s*[:=]\\s*)[^\\s&,;]+/gi,'$1[redacted]');\nreturn [{json:{workflow_name:String(input.workflow?.name||input.workflow_name||'Unknown workflow').slice(0,200),error_message:message.slice(0,1600),execution_id:String(execution.id||input.execution_id||''),node_name:String(execution.lastNodeExecuted||err.node?.name||input.node_name||input.trigger?.error?.node?.name||'Unknown node').slice(0,200)}}];"
+      },
+      "id": "b7d0a91f-c059-5bf5-af5f-45b957fd7b95",
+      "name": "Normalize Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        250,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL + '/rest/v1/error_logs' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {
+          "timeout": 30000
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        }
+      },
+      "id": "a732a577-1bdd-5d2a-a6da-c4607c819e1e",
+      "name": "Insert Supabase Error Log",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        510,
+        0
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const normalized=$('Normalize Error').item.json;\nconst logged=!$json.error;\nconst prefix=logged?'AccountAI workflow failed':'AccountAI workflow failed; Supabase logging also failed';\nreturn [{json:{...normalized,logged,message:(prefix+'\\n'+normalized.workflow_name+' / '+normalized.node_name+'\\nExecution: '+normalized.execution_id+'\\n'+normalized.error_message).slice(0,1024)}}];"
+      },
+      "id": "fcae118b-a8ff-5a4b-a770-19e54db54c63",
+      "name": "Prepare Pushover Alert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        770,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "userKey": "={{ $env.PUSHOVER_USER_KEY }}",
+        "message": "={{ $json.message }}",
+        "priority": 1,
+        "additionalFields": {
+          "title": "AccountAI error"
+        }
+      },
+      "id": "2358969e-5d20-50a4-84e0-45a2412645fd",
+      "name": "Pushover Error Alert",
+      "type": "n8n-nodes-base.pushover",
+      "typeVersion": 1,
+      "position": [
+        1040,
+        0
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const error=$('Prepare Pushover Alert').item.json; return [{json:{success:false,error:error.error_message,logged:error.logged,notified:!$json.error,workflow_name:error.workflow_name,execution_id:error.execution_id}}];"
+      },
+      "id": "a56a5a96-3d68-59f7-8215-58b0f7bf7f53",
+      "name": "Return Error Receipt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1300,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Global error handler\nSet as Error Workflow on 01\u201310. Error Trigger receives failed production executions; handled failures explicitly call the Execute Workflow Trigger.\n\nSupabase logging failures still reach Pushover. Notification failures are returned in the receipt. This workflow deliberately has no errorWorkflow to avoid recursion. Select Supabase and Pushover credentials. Logs redact common token formats and omit full input payloads.",
+        "height": 250,
+        "width": 610
+      },
+      "id": "fbacf4e0-5934-521a-8a76-c882d26162aa",
+      "name": "Error Workflow Notes",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        160,
+        -340
+      ]
+    }
+  ],
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Normalize Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Normalize Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Error": {
+      "main": [
+        [
+          {
+            "node": "Insert Supabase Error Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Supabase Error Log": {
+      "main": [
+        [
+          {
+            "node": "Prepare Pushover Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Pushover Alert": {
+      "main": [
+        [
+          {
+            "node": "Pushover Error Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pushover Error Alert": {
+      "main": [
+        [
+          {
+            "node": "Return Error Receipt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Africa/Cairo"
+  },
+  "pinData": {},
+  "versionId": "bfc3af2c-dc21-509a-8488-5a2a54871fbd",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

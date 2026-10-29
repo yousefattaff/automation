@@ -1,0 +1,351 @@
+{
+  "id": "capstone09",
+  "name": "09 - AccountAI Mcp Create Deal",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "accountai-create-deal",
+        "authentication": "bearerAuth"
+      },
+      "id": "a334fe08-42e8-547e-aa73-268443ea06b2",
+      "name": "MCP Server Trigger",
+      "type": "@n8n/n8n-nodes-langchain.mcpTrigger",
+      "typeVersion": 2,
+      "position": [
+        0,
+        -260
+      ],
+      "webhookId": "7fc18af2-b970-51fd-98ee-026a69a3ff86"
+    },
+    {
+      "parameters": {
+        "description": "Create a qualified deal for an existing contact. Use a stable request_id when retrying the same deal creation. Values are nonnegative; zero means unspecified estimate.",
+        "workflowId": {
+          "__rl": true,
+          "value": "capstone09",
+          "mode": "id"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "contact_email": "={{ $fromAI('contact_email', 'Email of an existing CRM contact', 'string') }}",
+            "title": "={{ $fromAI('title', 'Specific deal title', 'string') }}",
+            "value": "={{ $fromAI('value', 'Nonnegative estimated deal value; use zero if not known', 'number', 0) }}",
+            "request_id": "={{ $fromAI('request_id', 'Stable unique ID for this deal creation, reused on retries; empty disables replay protection', 'string', '') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "contact_email",
+              "displayName": "contact_email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "title",
+              "displayName": "title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "value",
+              "displayName": "value",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            },
+            {
+              "id": "request_id",
+              "displayName": "request_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "id": "45c36d99-4a94-50b8-b49d-49a2250b0cee",
+      "name": "create_deal",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        240,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "inputSource": "workflowInputs",
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "contact_email",
+              "type": "string"
+            },
+            {
+              "name": "title",
+              "type": "string"
+            },
+            {
+              "name": "value",
+              "type": "number"
+            },
+            {
+              "name": "request_id",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "id": "8657ede3-5232-565f-a119-d3534d2bc905",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const input=$input.first().json;\nconst email=String(input.contact_email||'').trim().toLowerCase();\nconst title=String(input.title||'').trim();\nconst value=input.value==null?null:Number(input.value);\nif(!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) throw new Error('Valid contact_email is required');\nif(!title||title.length>240) throw new Error('A title of 1 to 240 characters is required');\nif(value!==null&&(!Number.isFinite(value)||value<0)) throw new Error('value must be a nonnegative number');\nreturn [{json:{contact_email:email,title,value,request_id:String(input.request_id||'').trim().slice(0,160)||null}}];"
+      },
+      "id": "69b7e7f9-1c1e-58de-876d-ec9d62d9ca9d",
+      "name": "Validate Tool Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        140
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL + '/rest/v1/rpc/create_crm_deal' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {p_contact_email:$json.contact_email,p_title:$json.title,p_value:$json.value,p_request_id:$json.request_id} }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "15de4979-3014-556d-b72d-de42fbea2440",
+      "name": "Supabase create_deal",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        520,
+        140
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const data=$input.first().json; if(data.success!==true) throw new Error('Supabase returned no success result'); return [{json:data}];"
+      },
+      "id": "b3ff0436-503f-54f5-bc02-1d1677535fa5",
+      "name": "Return Tool Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        140
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const raw = $input.first().json;\nconst err = raw.error;\nconst message = String(typeof err === 'string' ? err : err?.message || raw.message || 'Workflow operation failed').slice(0,1600);\nreturn [{json:{success:false,error:message,workflow:{id:$workflow.id,name:$workflow.name},execution:{id:$execution.id,error:{message},lastNodeExecuted:err?.node?.name || raw.node_name || 'See parent execution'}}}];"
+      },
+      "id": "a047960d-c8e6-5afd-8c6a-1ad4c751abfb",
+      "name": "Prepare Failure",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        300,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "value": "capstone11",
+          "mode": "id"
+        },
+        "mode": "each",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "02954d24-9ccc-5f2a-bd8b-5eaa28531958",
+      "name": "Log Failure",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        540,
+        420
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "return [{json:$('Prepare Failure').item.json}];"
+      },
+      "id": "4d085e9a-35f3-53b9-8c9a-a18328207b3e",
+      "name": "Return Failure",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        780,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## create_deal\nSelect a Bearer Auth credential on the MCP Server Trigger and a Supabase credential on the HTTP node. Publish this workflow. Connect Claude Desktop through mcp-remote to the production MCP URL shown by n8n.\n\nThe tool calls this same workflow through its Execute Workflow Trigger. Re-select this workflow in create_deal if import changed its ID; this starts the separate execution branch and does not recurse through MCP.",
+        "height": 260,
+        "width": 560
+      },
+      "id": "05248403-0d41-522a-b2de-ccb6f72ec961",
+      "name": "MCP Setup Notes",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -20,
+        -600
+      ]
+    }
+  ],
+  "connections": {
+    "create_deal": {
+      "ai_tool": [
+        [
+          {
+            "node": "MCP Server Trigger",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Validate Tool Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Tool Input": {
+      "main": [
+        [
+          {
+            "node": "Supabase create_deal",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase create_deal": {
+      "main": [
+        [
+          {
+            "node": "Return Tool Result",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Return Tool Result": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Prepare Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Failure": {
+      "main": [
+        [
+          {
+            "node": "Log Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Failure": {
+      "main": [
+        [
+          {
+            "node": "Return Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Africa/Cairo",
+    "errorWorkflow": "capstone11"
+  },
+  "pinData": {},
+  "versionId": "ca74b3e4-e0d0-570f-93b2-48e9491f567e",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

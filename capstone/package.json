@@ -1,0 +1,16 @@
+{
+  "name": "accountai-capstone-validation",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Local verification tools for the AccountAI n8n workflows",
+  "scripts": {
+    "test": "npm run test:workflows && npm run test:outbound && npm run test:database",
+    "test:workflows": "node scripts/validate-workflows.cjs",
+    "test:outbound": "node tests/outbound-behavior.cjs",
+    "test:database": "node scripts/test-database.cjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.11",
+    "@electric-sql/pglite-pgvector": "0.0.4"
+  }
+}

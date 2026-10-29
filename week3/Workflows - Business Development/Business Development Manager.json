@@ -1,0 +1,503 @@
+{
+  "name": "Business Development Manager",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "1Y5Q6f9Z_2hoLPDDIgSvy47FI4QRtzjoQ",
+          "mode": "list",
+          "cachedResultName": "ICP File Drop",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1Y5Q6f9Z_2hoLPDDIgSvy47FI4QRtzjoQ"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "f602f581-3473-429b-a076-9f95d57b65d0",
+      "name": "Google Drive Trigger",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "eYZNyrZEPhBKGHrr",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        224,
+        0
+      ],
+      "id": "003a5701-6946-4fff-9851-f6c9ac04cab4",
+      "name": "Download file",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "eYZNyrZEPhBKGHrr",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        448,
+        0
+      ],
+      "id": "5d6114ae-55f6-4d73-abbe-6130e2d28f97",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.text }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are the Sales Manager Agent for an Accounting Software firm, AccountAI.\n\nYou are provided with the ICP for an ideal prospect.\nYou must carry out these steps:\n\nFirst, use your Prospecting Sub-agent tool once to search online for leads, providing a query based on the ICP.\n\nNext, for each of the identified prospects, use your RevOps sub-agent tool to store the information in the Pipedrive CRM database. Use the tool repeatedly once for each prospect.\n\nFinally, use your SDR sub-agent tool once; this tool will retrieve everyone in Pipedrive and draft an outbound sales email for all of them.\n\nThen reply with a summary of the outcome.\n",
+          "passthroughBinaryImages": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        864,
+        0
+      ],
+      "id": "e455f939-e894-4b29-8462-c71c79dce2b3",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-5.2",
+          "mode": "list",
+          "cachedResultName": "gpt-5.2"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        672,
+        224
+      ],
+      "id": "e3992815-5b65-4107-bbaf-54019b624017",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "rEBsbMMEP7Sn4djf",
+          "name": "OpenAi account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "description": "Call this Prospecting tool to search the internet for leads and also use prospecting tools to predict their email address. This tool will return lead information. Call this tool once to retrieve multiple sales prospects.",
+        "workflowId": {
+          "__rl": true,
+          "value": "USjEOR5crc0ZEmQQ",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/USjEOR5crc0ZEmQQ",
+          "cachedResultName": "Amplify — prospecting sub-agent"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "query": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('query', `A description of the prospect`, 'string') }}"
+          },
+          "matchingColumns": [
+            "query"
+          ],
+          "schema": [
+            {
+              "id": "query",
+              "displayName": "query",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        800,
+        224
+      ],
+      "id": "879794b4-9edf-4da1-9bf8-c971fc13aeea",
+      "name": "Call 'prospecting sub-agent'"
+    },
+    {
+      "parameters": {
+        "description": "Call this tool to save a Sales Lead in the Pipedrive CRM database. Describe the prospect / lead, providing their name, company, role and email address. Call this tool separately for each prospect to be saved.",
+        "workflowId": {
+          "__rl": true,
+          "value": "fodelXd6e3IUp6l9",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/fodelXd6e3IUp6l9",
+          "cachedResultName": "Amplify — RevOps Sub-Agent"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "sales_lead_description": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('sales_lead_description', `a description of the sales lead including their name, email address, company, role`, 'string') }}"
+          },
+          "matchingColumns": [
+            "sales_lead_description"
+          ],
+          "schema": [
+            {
+              "id": "sales_lead_description",
+              "displayName": "sales_lead_description",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        928,
+        224
+      ],
+      "id": "fea767e0-da22-4d0a-a2cb-0b42c8c0d1ef",
+      "name": "Call 'RevOps Sub-Agent'"
+    },
+    {
+      "parameters": {
+        "description": "This tool generates SDR Sales Outreach Emails to all prospects that have been loaded into the Pipedrive CRM. Call this tool one time to generate all draft emails.",
+        "workflowId": {
+          "__rl": true,
+          "value": "KugETONA1Or8FuMc",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/KugETONA1Or8FuMc",
+          "cachedResultName": "Amplify — SDR Sub-Agent"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        1056,
+        224
+      ],
+      "id": "eaa54392-4259-4529-929d-4c216aa161aa",
+      "name": "Call 'SDR Sub-Agent'"
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"success\": true,\n  \"summary\": \"a concise description of what happened\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        1184,
+        224
+      ],
+      "id": "39736392-784a-4395-bcd5-addf085d8ba3",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "8af38bbd-9dd9-4a3c-ae97-b042af503723",
+              "leftValue": "={{ $json.output.success }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1392,
+        0
+      ],
+      "id": "2af4587d-434b-42bd-8746-35710cf1b135",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "message": "HOORAY! Success",
+        "priority": 1,
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.pushover",
+      "typeVersion": 1,
+      "position": [
+        1616,
+        -96
+      ],
+      "id": "9f42f0ca-623c-43bb-94d4-e87a3e01c063",
+      "name": "Push a message",
+      "credentials": {
+        "pushoverApi": {
+          "id": "DV3K0hRkoAh05Svv",
+          "name": "Pushover account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "message": "Horrors! Problem.",
+        "priority": 1,
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.pushover",
+      "typeVersion": 1,
+      "position": [
+        1616,
+        96
+      ],
+      "id": "b8c31057-6dd2-453b-bf44-d50ed89e657f",
+      "name": "Push a message1",
+      "credentials": {
+        "pushoverApi": {
+          "id": "DV3K0hRkoAh05Svv",
+          "name": "Pushover account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Data Extraction",
+        "height": 528,
+        "width": 656
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -64,
+        -160
+      ],
+      "typeVersion": 1,
+      "id": "172cb8c6-3324-4894-900a-adb5d1cbdf5b",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Agent",
+        "height": 528,
+        "width": 704
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        624,
+        -160
+      ],
+      "typeVersion": 1,
+      "id": "fb3191b9-376d-4cd7-92ff-8f1f750860b9",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## Notification",
+        "height": 528,
+        "width": 480
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1344,
+        -160
+      ],
+      "typeVersion": 1,
+      "id": "83f69f96-64b6-41d4-a638-de79f022f520",
+      "name": "Sticky Note2"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Google Drive Trigger": {
+      "main": [
+        [
+          {
+            "node": "Download file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download file": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'prospecting sub-agent'": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'RevOps Sub-Agent'": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'SDR Sub-Agent'": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Push a message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Push a message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "88768ca2-6e42-45c2-bf39-3983251dd75c",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "13b55200b963a086b42f884f9b46bd6ff8b68ee884b953ffb37c8c7f8b6ed06c"
+  },
+  "id": "vld8xjw8QZ90Yt2i",
+  "tags": []
+}

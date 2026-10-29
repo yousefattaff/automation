@@ -1,0 +1,228 @@
+{
+  "name": "05-voice-roundtrip",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "voice-roundtrip",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "ba23e80f-341d-4e53-b893-19b8e8677aff",
+      "name": "Voice Webhook"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.elevenlabs.io/v1/speech-to-text",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "audio"
+            },
+            {
+              "parameterType": "formData",
+              "name": "model_id",
+              "value": "scribe_v1"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        220,
+        0
+      ],
+      "id": "592f392e-42ac-4294-b727-c3d700bdb8f0",
+      "name": "ElevenLabs STT"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.text }}",
+        "hasOutputParser": false,
+        "options": {
+          "systemMessage": "You are a helpful voice assistant for AccountAI. Answer in one or two short spoken sentences. No markdown, no lists, no emoji.",
+          "passthroughBinaryImages": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        460,
+        0
+      ],
+      "id": "d05350e6-ce32-40a2-aa01-126b918b03c9",
+      "name": "Voice Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4.1-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4.1-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        440,
+        220
+      ],
+      "id": "0658508e-d7bc-411e-8866-385f0947f6bf",
+      "name": "OpenAI Chat Model"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.elevenlabs.io/v1/text-to-speech/YOUR_VOICE_ID",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ text: $json.output, model_id: 'eleven_turbo_v2_5' }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "audio"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        700,
+        0
+      ],
+      "id": "156a056a-3db2-49b6-a8ab-4524c600dccb",
+      "name": "ElevenLabs TTS"
+    },
+    {
+      "parameters": {
+        "respondWith": "binary",
+        "responseDataSource": "set",
+        "inputFieldName": "audio",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "audio/mpeg"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        940,
+        0
+      ],
+      "id": "9a238ca4-7c8f-4894-bb7a-0c236ee0a286",
+      "name": "Respond with audio"
+    },
+    {
+      "parameters": {
+        "content": "## Voice round-trip (use with week2/voice.html)\n\n1. Create an **HTTP Header Auth** credential for ElevenLabs:\n   - Name: `xi-api-key`\n   - Value: `YOUR_ELEVENLABS_API_KEY`\n2. Put a voice ID in the **ElevenLabs TTS** URL (replace `YOUR_VOICE_ID`). Find IDs in ElevenLabs -> Voices.\n3. Activate the workflow and copy the **Production URL** into `voice.html`.\n4. Record, send, and the browser plays the returned `audio/mpeg`.\n\nFlow: multipart audio -> STT (`text`) -> agent (`output`) -> TTS (binary `audio`) -> response.\n\nIf your ElevenLabs free plan blocks STT/TTS, use `04-elevenlabs-voice-bridge` instead.",
+        "height": 300,
+        "width": 660
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -20,
+        460
+      ],
+      "id": "161eedf0-b696-4cf5-984b-df22c92d91dd",
+      "name": "Sticky Note"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Voice Webhook": {
+      "main": [
+        [
+          {
+            "node": "ElevenLabs STT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ElevenLabs STT": {
+      "main": [
+        [
+          {
+            "node": "Voice Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Voice Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Voice Agent": {
+      "main": [
+        [
+          {
+            "node": "ElevenLabs TTS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ElevenLabs TTS": {
+      "main": [
+        [
+          {
+            "node": "Respond with audio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "0b334845-65da-4399-9d73-f4fe57f905a2",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

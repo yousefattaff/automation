@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Record → n8n Webhook → Play</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 24px; max-width: 760px; }
+    button { padding: 10px 14px; margin-right: 8px; margin-bottom: 8px; cursor: pointer; }
+    .row { margin: 12px 0; }
+    .status { padding: 10px; background: #f6f6f6; border-radius: 8px; white-space: pre-wrap; }
+    audio { width: 100%; margin-top: 8px; }
+    .small { color: #555; font-size: 14px; }
+  </style>
+</head>
+
+<body>
+  <h1>Record → n8n → Play</h1>
+
+  <div class="row">
+    <label class="small">n8n Webhook URL</label><br/>
+    <input id="url" style="width:100%;padding:10px;font-size:14px;"
+      value="WEBHOOK_URL"
+      placeholder="https://<your-instance>.app.n8n.cloud/webhook/...." />
+    <div class="small">Tip: use the <b>Test URL</b> while you’re building, then swap to the <b>Production URL</b>.</div>
+  </div>
+
+  <div class="row">
+    <button id="startBtn">🎙️ Start recording</button>
+    <button id="stopBtn" disabled>⏹ Stop</button>
+    <button id="sendBtn" disabled>➡️ Send to n8n</button>
+  </div>
+
+  <div class="row">
+    <div class="small">Local recording preview</div>
+    <audio id="localPlayer" controls></audio>
+  </div>
+
+  <div class="row">
+    <div class="small">Response audio from n8n</div>
+    <audio id="remotePlayer" controls></audio>
+  </div>
+
+  <div class="row status" id="status">Idle.</div>
+
+<script>
+(() => {
+  const statusEl = document.getElementById("status");
+  const urlEl = document.getElementById("url");
+
+  const startBtn = document.getElementById("startBtn");
+  const stopBtn  = document.getElementById("stopBtn");
+  const sendBtn  = document.getElementById("sendBtn");
+
+  const localPlayer  = document.getElementById("localPlayer");
+  const remotePlayer = document.getElementById("remotePlayer");
+
+  let mediaRecorder = null;
+  let chunks = [];
+  let recordedBlob = null;
+
+  function setStatus(msg) {
+    statusEl.textContent = msg;
+  }
+
+  function pickMimeType() {
+    // Chrome usually supports webm/opus; wav recording isn't typically supported by MediaRecorder.
+    const candidates = [
+      "audio/webm;codecs=opus",
+      "audio/webm",
+      "audio/ogg;codecs=opus",
+      "audio/ogg"
+    ];
+    return candidates.find(t => MediaRecorder.isTypeSupported(t)) || "";
+  }
+
+  async function startRecording() {
+    setStatus("Requesting microphone permission…");
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+    chunks = [];
+    recordedBlob = null;
+
+    const mimeType = pickMimeType();
+    mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+
+    mediaRecorder.ondataavailable = (e) => {
+      if (e.data && e.data.size > 0) chunks.push(e.data);
+    };
+
+    mediaRecorder.onstop = () => {
+      // stop tracks to release mic
+      stream.getTracks().forEach(t => t.stop());
+
+      recordedBlob = new Blob(chunks, { type: mediaRecorder.mimeType || "audio/webm" });
+      const localUrl = URL.createObjectURL(recordedBlob);
+      localPlayer.src = localUrl;
+
+      setStatus(
+        `Recorded ${Math.round(recordedBlob.size/1024)} KB\n` +
+        `MIME: ${recordedBlob.type}\n` +
+        `Ready to send.`
+      );
+
+      sendBtn.disabled = false;
+    };
+
+    mediaRecorder.start();
+    setStatus(`Recording… (MIME: ${mediaRecorder.mimeType || "default"})`);
+    startBtn.disabled = true;
+    stopBtn.disabled = false;
+    sendBtn.disabled = true;
+  }
+
+  function stopRecording() {
+    if (mediaRecorder && mediaRecorder.state !== "inactive") {
+      mediaRecorder.stop();
+    }
+    stopBtn.disabled = true;
+    startBtn.disabled = false;
+  }
+
+  async function sendToN8n() {
+    const webhookUrl = urlEl.value.trim();
+    if (!webhookUrl || webhookUrl === "WEBHOOK_URL") {
+      alert("Paste your n8n webhook URL first.");
+      return;
+    }
+    if (!recordedBlob) {
+      alert("Record something first.");
+      return;
+    }
+
+    setStatus("Uploading audio to n8n…");
+
+    // Send as multipart/form-data
+    const form = new FormData();
+    // Field name "audio" — you’ll read this in n8n as the incoming binary
+    form.append("audio", recordedBlob, "recording.webm");
+
+    let res;
+    try {
+      res = await fetch(webhookUrl, {
+        method: "POST",
+        body: form
+      });
+    } catch (err) {
+      setStatus("Fetch failed (likely CORS or network).\n\n" + String(err));
+      return;
+    }
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      setStatus(`n8n returned HTTP ${res.status}\n\n${text}`);
+      return;
+    }
+
+    const contentType = res.headers.get("content-type") || "";
+    setStatus(`Got response. Content-Type: ${contentType}\nDownloading audio…`);
+
+    const outBlob = await res.blob();
+
+    const outUrl = URL.createObjectURL(outBlob);
+    remotePlayer.src = outUrl;
+
+    setStatus(
+      `Done.\n` +
+      `Response bytes: ${Math.round(outBlob.size/1024)} KB\n` +
+      `Response MIME: ${outBlob.type || contentType || "unknown"}\n` +
+      `Playing below.`
+    );
+
+    remotePlayer.play().catch(() => {});
+  }
+
+  startBtn.addEventListener("click", () => startRecording().catch(err => {
+    setStatus("Could not start recording:\n" + String(err));
+  }));
+  stopBtn.addEventListener("click", stopRecording);
+  sendBtn.addEventListener("click", () => sendToN8n().catch(err => {
+    setStatus("Send failed:\n" + String(err));
+  }));
+})();
+</script>
+</body>
+</html>
